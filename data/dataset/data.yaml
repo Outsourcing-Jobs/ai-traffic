@@ -1,0 +1,9 @@
+path: D:\Jobs\ai-trafic\data\dataset
+train: images
+val: images
+nc: 4
+names:
+  0: car
+  1: motorcycle
+  2: bus
+  3: truck
