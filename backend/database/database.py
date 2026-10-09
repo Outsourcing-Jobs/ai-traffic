@@ -4,31 +4,35 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from config import DATABASE_URL
 
+connect_args = {"check_same_thread": False} if "sqlite" in DATABASE_URL.lower() else {}
+
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False}  # Bắt buộc cho SQLite với FastAPI đa luồng
+    connect_args=connect_args,
+    pool_pre_ping=True
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
-# Tự động cập nhật các bản ghi cũ sang giờ GMT+7
+# Tự động cập nhật các bản ghi cũ sang giờ GMT+7 (Chỉ áp dụng với SQLite cục bộ)
 try:
-    import sqlite3
-    from config import DB_PATH
-    if DB_PATH.exists():
-        with sqlite3.connect(DB_PATH) as _conn:
-            _cur = _conn.cursor()
-            _cur.execute("UPDATE crossing_events SET crossed_at = datetime(crossed_at, '+7 hours') WHERE crossed_at < '2026-10-08 16:00:00'")
-            _cur.execute("UPDATE traffic_stats SET timestamp = datetime(timestamp, '+7 hours') WHERE timestamp < '2026-10-08 16:00:00'")
-            _cur.execute("UPDATE sessions SET started_at = datetime(started_at, '+7 hours') WHERE started_at < '2026-10-08 16:00:00'")
-            _conn.commit()
-            try:
-                _cur.execute("ALTER TABLE dataset_samples ADD COLUMN cloud_url TEXT")
+    if "sqlite" in DATABASE_URL.lower():
+        import sqlite3
+        from config import DB_PATH
+        if DB_PATH.exists():
+            with sqlite3.connect(DB_PATH) as _conn:
+                _cur = _conn.cursor()
+                _cur.execute("UPDATE crossing_events SET crossed_at = datetime(crossed_at, '+7 hours') WHERE crossed_at < '2026-10-08 16:00:00'")
+                _cur.execute("UPDATE traffic_stats SET timestamp = datetime(timestamp, '+7 hours') WHERE timestamp < '2026-10-08 16:00:00'")
+                _cur.execute("UPDATE sessions SET started_at = datetime(started_at, '+7 hours') WHERE started_at < '2026-10-08 16:00:00'")
                 _conn.commit()
-            except Exception:
-                pass
+                try:
+                    _cur.execute("ALTER TABLE dataset_samples ADD COLUMN cloud_url TEXT")
+                    _conn.commit()
+                except Exception:
+                    pass
 except Exception:
     pass
 

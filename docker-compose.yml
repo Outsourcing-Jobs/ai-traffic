@@ -1,6 +1,30 @@
 version: '3.8'
 
 services:
+  # ========================================================
+  # 1. Cơ sở dữ liệu Production (PostgreSQL 15)
+  # ========================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai_traffic_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-traffic_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-traffic_secret_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-traffic_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-traffic_user} -d ${POSTGRES_DB:-traffic_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ========================================================
+  # 2. Backend FastAPI + AI Computer Vision Pipeline
+  # ========================================================
   backend:
     build:
       context: .
@@ -11,19 +35,27 @@ services:
       - "8000:8000"
     volumes:
       - ./data:/app/data
-      - db_data:/app/backend_data
+      - ./backend/traffic.db:/app/backend/traffic.db
     environment:
       - PYTHONUNBUFFERED=1
+      # Cấu hình kết nối DB: Mặc định nối vào PostgreSQL container (hoặc cấu hình SQLite nếu chạy độc lập)
+      - DATABASE_URL=${DATABASE_URL:-postgresql://traffic_user:traffic_secret_2026@postgres:5432/traffic_db}
       - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-dbzuqtojr}
       - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-278466846868427}
       - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-lqKjEaJJByiDQ6lvR6LbwcAXtI0}
       - CLOUDINARY_FOLDER=${CLOUDINARY_FOLDER:-ai_traffic_dataset}
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # ========================================================
+  # 3. Frontend Web App (Nginx + React SPA Production)
+  # ========================================================
   frontend:
     build:
       context: ./frontend
@@ -31,10 +63,11 @@ services:
     container_name: ai_traffic_frontend
     restart: unless-stopped
     ports:
+      - "80:80"
       - "5173:80"
     depends_on:
       backend:
         condition: service_healthy
 
 volumes:
-  db_data:
+  pgdata:
