@@ -13,7 +13,7 @@ import {
 } from 'chart.js';
 import { Line, Doughnut } from 'react-chartjs-2';
 import { api } from '../services/api';
-import { PieChart, TrendingUp, RefreshCw } from 'lucide-react';
+import { PieChart, TrendingUp, RefreshCw, FileSpreadsheet, Download } from 'lucide-react';
 
 ChartJS.register(
   CategoryScale,
@@ -118,7 +118,7 @@ export default function DashboardPage({ session }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>DASHBOARD PHÂN TÍCH LƯU LƯỢNG & TỐC ĐỘ</h2>
           <p style={{ fontSize: '0.875rem', color: '#64748b' }}>
@@ -126,10 +126,35 @@ export default function DashboardPage({ session }) {
           </p>
         </div>
 
-        <button className="btn btn-secondary" onClick={loadData} disabled={loading}>
-          <RefreshCw size={16} />
-          <span>Làm Mới Biểu Đồ</span>
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          {session && (
+            <>
+              <a
+                href={api.getExportCsvUrl(session.id)}
+                download
+                className="btn btn-secondary"
+                style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#2563eb', borderColor: '#bfdbfe' }}
+              >
+                <FileSpreadsheet size={16} />
+                <span>Xuất CSV Lưu Lượng</span>
+              </a>
+              <a
+                href={api.getExportViolationsCsvUrl(session.id)}
+                download
+                className="btn btn-secondary"
+                style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#dc2626', borderColor: '#fecaca' }}
+              >
+                <Download size={16} />
+                <span>Xuất CSV Vi Phạm</span>
+              </a>
+            </>
+          )}
+
+          <button className="btn btn-secondary" onClick={loadData} disabled={loading}>
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            <span>Làm Mới</span>
+          </button>
+        </div>
       </div>
 
       {/* Grid biểu đồ chính */}

@@ -1,3 +1,4 @@
+from typing import Any
 import os
 import json
 import time
@@ -9,6 +10,7 @@ import cv2
 from database.database import SessionLocal
 from database.models import SessionModel, CrossingEventModel, TrafficStatModel
 from ai.pipeline import TrafficPipeline
+from ai.violation_service import record_speed_violation
 from config import JPEG_QUALITY, STREAM_FRAME_WIDTH, STREAM_FRAME_HEIGHT, BASE_DIR, VIDEOS_DIR
 
 
@@ -31,7 +33,16 @@ class SessionRunner:
 
         self.latest_jpeg: Optional[bytes] = None
         self.latest_raw_frame = None
+        self.logged_violation_tracks = set()
+        self.latest_congestion = {
+            "level": "FLUID",
+            "text": "Lưu thông thông thoáng",
+            "active_count": 0,
+            "current_avg_speed": 0.0,
+            "speed_limit": self.pipeline.speed_limit
+        }
         self.lock = threading.Lock()
+
 
     def start(self):
         """Bắt đầu chạy luồng xử lý video"""
@@ -81,6 +92,8 @@ class SessionRunner:
                 if not ret:
                     # Video kết thúc -> Tua lại từ đầu để tiếp tục demo liên tục
                     cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                    self.pipeline.on_video_loop()
+                    self.logged_violation_tracks.clear()
                     time.sleep(0.1)
                     continue
 
@@ -88,7 +101,7 @@ class SessionRunner:
                 frame = cv2.resize(frame, (STREAM_FRAME_WIDTH, STREAM_FRAME_HEIGHT))
 
                 # Chạy AI Pipeline
-                annotated_frame, detections, events = self.pipeline.process_frame(frame)
+                annotated_frame, detections, events, violations, congestion_info = self.pipeline.process_frame(frame)
 
                 # Nén ảnh thành JPEG cho stream
                 encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY]
@@ -96,6 +109,23 @@ class SessionRunner:
                 with self.lock:
                     self.latest_jpeg = buffer.tobytes()
                     self.latest_raw_frame = frame.copy()
+                    self.latest_congestion = congestion_info
+
+                # Lưu các xe vi phạm tốc độ (chụp ảnh bằng chứng & ghi CSDL)
+                if violations:
+                    for v in violations:
+                        tid = v["track_id"]
+                        if tid not in self.logged_violation_tracks:
+                            self.logged_violation_tracks.add(tid)
+                            record_speed_violation(
+                                session_id=self.session_id,
+                                track_id=tid,
+                                vehicle_type=v["vehicle_type"],
+                                speed_kmh=v["speed_kmh"],
+                                speed_limit=v["speed_limit"],
+                                frame=frame,
+                                bbox=v["bbox"]
+                            )
 
                 # Lưu các sự kiện xe cắt qua vạch vào CSDL
                 if events:
@@ -112,6 +142,7 @@ class SessionRunner:
                         db.add(crossing_record)
                         minute_events.append(ev)
                     db.commit()
+
 
                 # Tổng hợp thống kê mỗi 60 giây vào bảng traffic_stats
                 if time.time() - last_stat_time >= 60.0:
@@ -169,6 +200,18 @@ class SessionRunner:
             if self.latest_raw_frame is not None:
                 return self.latest_raw_frame.copy()
             return None
+
+    def get_congestion_info(self) -> Dict[str, Any]:
+        """Lấy thông tin đánh giá mức độ ùn tắc giao thông thời gian thực"""
+        with self.lock:
+            return self.latest_congestion.copy()
+
+    def set_speed_limit(self, limit: float):
+        """Cập nhật tốc độ giới hạn động cho pipeline"""
+        with self.lock:
+            self.pipeline.speed_limit = float(limit)
+            self.latest_congestion["speed_limit"] = float(limit)
+
 
 
 class VideoManager:

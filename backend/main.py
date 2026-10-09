@@ -3,7 +3,7 @@ from fastapi import FastAPI
 # pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
 from database.database import engine, Base
-from api import sessions, stats, stream, videos, dataset
+from api import sessions, stats, stream, videos, dataset, violations, auth
 
 # Tự động tạo bảng SQLite nếu chưa tồn tại
 Base.metadata.create_all(bind=engine)
@@ -24,8 +24,10 @@ app.add_middleware(
 )
 
 # Đăng ký các Router API
+app.include_router(auth.router)
 app.include_router(sessions.router)
 app.include_router(stats.router)
+app.include_router(violations.router)
 app.include_router(stream.router)
 app.include_router(videos.router)
 app.include_router(dataset.router)

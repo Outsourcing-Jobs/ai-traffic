@@ -25,6 +25,8 @@ class ROIConfigSchema(BaseModel):
     counting_lines: List[CountingLineSchema] = []
     roi_polygon: List[List[int]] = []  # Danh sách các điểm [[x1, y1], [x2, y2], ...]
     homography: Optional[HomographyConfigSchema] = None
+    speed_limit: Optional[float] = 50.0  # Tốc độ giới hạn cho phép (km/h)
+
 
 
 # ==========================================
@@ -104,12 +106,48 @@ class KPISummaryResponse(BaseModel):
     total_vehicles: int = 0
     avg_speed: float = 0.0
     vehicles_per_minute: float = 0.0
+    congestion_level: str = "FLUID"  # FLUID, MODERATE, CONGESTED
+    congestion_text: str = "Thông thoáng"
+    active_vehicles: int = 0
+    speed_limit: float = 50.0
     by_type: Dict[str, int] = {
         "car": 0,
         "motorcycle": 0,
         "bus": 0,
         "truck": 0
     }
+
+
+# ==========================================
+# Speed Violations Schemas
+# ==========================================
+class ViolationResponse(BaseModel):
+    id: int
+    session_id: int
+    track_id: int
+    vehicle_type: str
+    speed_kmh: float
+    speed_limit: float
+    evidence_image_path: str
+    cloud_url: Optional[str] = None
+    violated_at: datetime
+    status: str
+
+    class Config:
+        from_attributes = True
+
+
+class ViolationSummaryResponse(BaseModel):
+    total_violations: int = 0
+    highest_speed: float = 0.0
+    violation_rate_pct: float = 0.0
+    by_type: Dict[str, int] = {
+        "car": 0,
+        "motorcycle": 0,
+        "bus": 0,
+        "truck": 0
+    }
+
 
 
 # ==========================================

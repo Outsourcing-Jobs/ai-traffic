@@ -10,6 +10,8 @@ from database.schemas import VideoSourceCreate, VideoSourceResponse
 
 router = APIRouter(prefix="/api/videos", tags=["Video Sources"])
 
+from config import VIDEOS_DIR
+
 DEFAULT_SEEDS = [
     {
         "title": "Cloud CDN: Video Cao Tốc Mẫu (Roboflow)",
@@ -26,7 +28,25 @@ DEFAULT_SEEDS = [
 
 @router.get("", response_model=List[VideoSourceResponse])
 def list_video_sources(db: Session = Depends(get_db)):
-    """Lấy danh sách các nguồn video đã lưu trong CSDL"""
+    """Lấy danh sách các nguồn video (tự động quét các file trong data/videos và CSDL)"""
+    # 1. Tự động quét các file video có trong data/videos/
+    supported_exts = {".mp4", ".avi", ".mkv", ".mov"}
+    if VIDEOS_DIR.exists():
+        for file_path in VIDEOS_DIR.iterdir():
+            if file_path.is_file() and file_path.suffix.lower() in supported_exts:
+                rel_url = f"data/videos/{file_path.name}"
+                # Kiểm tra đã có trong DB chưa
+                existing = db.query(VideoSourceModel).filter(VideoSourceModel.url == rel_url).first()
+                if not existing:
+                    file_size_mb = round(file_path.stat().st_size / (1024 * 1024), 1)
+                    new_src = VideoSourceModel(
+                        title=f"📁 Local: {file_path.name} ({file_size_mb} MB)",
+                        url=rel_url,
+                        description=f"File video cục bộ trong data/videos/{file_path.name}"
+                    )
+                    db.add(new_src)
+        db.commit()
+
     items = db.query(VideoSourceModel).order_by(VideoSourceModel.id.asc()).all()
 
     # Nếu DB chưa có bản ghi nào, tự động seed các link Cloud mẫu ban đầu

@@ -24,6 +24,8 @@ class SessionModel(Base):
     detections = relationship("DetectionModel", back_populates="session", cascade="all, delete-orphan")
     traffic_stats = relationship("TrafficStatModel", back_populates="session", cascade="all, delete-orphan")
     crossing_events = relationship("CrossingEventModel", back_populates="session", cascade="all, delete-orphan")
+    violations = relationship("ViolationModel", back_populates="session", cascade="all, delete-orphan")
+
 
 
 class DetectionModel(Base):
@@ -114,4 +116,38 @@ class DatasetSampleModel(Base):
     bus_count = Column(Integer, default=0)
     truck_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.now)
+
+
+class ViolationModel(Base):
+    __tablename__ = "violations"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    session_id = Column(Integer, ForeignKey("sessions.id"), nullable=False)
+    track_id = Column(Integer, nullable=False)
+    vehicle_type = Column(String(50), nullable=False)  # car, motorcycle, bus, truck
+    speed_kmh = Column(Float, nullable=False)
+    speed_limit = Column(Float, nullable=False, default=50.0)
+    evidence_image_path = Column(Text, nullable=False)
+    cloud_url = Column(Text, nullable=True)  # Link ảnh Cloudinary
+    violated_at = Column(DateTime, default=datetime.now, nullable=False)
+    status = Column(String(50), default="pending")  # pending, confirmed
+
+    session = relationship("SessionModel", back_populates="violations")
+
+    __table_args__ = (
+        Index("idx_violation_session", "session_id"),
+        Index("idx_violation_time", "violated_at"),
+    )
+
+
+class UserModel(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    username = Column(String(50), unique=True, index=True, nullable=False)
+    hashed_password = Column(String(255), nullable=False)
+    full_name = Column(String(100), nullable=False)
+    role = Column(String(50), default="admin")  # admin, operator, viewer
+    created_at = Column(DateTime, default=datetime.now)
+
 

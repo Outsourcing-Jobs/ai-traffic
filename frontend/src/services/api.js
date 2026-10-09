@@ -1,9 +1,82 @@
 const API_BASE = '/api';
 
+const getHeaders = (extraHeaders = {}) => {
+  const token = localStorage.getItem('traffic_auth_token');
+  const headers = { ...extraHeaders };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+};
+
 export const api = {
+  // Authentication
+  async login(username, password) {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Tên đăng nhập hoặc mật khẩu không đúng');
+    }
+    const data = await res.json();
+    if (data.token) {
+      localStorage.setItem('traffic_auth_token', data.token);
+      localStorage.setItem('traffic_auth_user', JSON.stringify(data.user));
+    }
+    return data;
+  },
+
+  async register(payload) {
+    const res = await fetch(`${API_BASE}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Lỗi khi đăng ký tài khoản');
+    }
+    return res.json();
+  },
+
+  async getMe() {
+    const token = localStorage.getItem('traffic_auth_token');
+    if (!token) return null;
+    try {
+      const res = await fetch(`${API_BASE}/auth/me`, {
+        headers: getHeaders()
+      });
+      if (!res.ok) {
+        localStorage.removeItem('traffic_auth_token');
+        localStorage.removeItem('traffic_auth_user');
+        return null;
+      }
+      return res.json();
+    } catch {
+      return null;
+    }
+  },
+
+  logout() {
+    localStorage.removeItem('traffic_auth_token');
+    localStorage.removeItem('traffic_auth_user');
+  },
+
+  getStoredUser() {
+    try {
+      const u = localStorage.getItem('traffic_auth_user');
+      return u ? JSON.parse(u) : null;
+    } catch {
+      return null;
+    }
+  },
+
   // Sessions
   async getSessions() {
-    const res = await fetch(`${API_BASE}/sessions`);
+    const res = await fetch(`${API_BASE}/sessions`, { headers: getHeaders() });
     if (!res.ok) throw new Error('Không thể tải danh sách phiên');
     return res.json();
   },
@@ -166,7 +239,54 @@ export const api = {
     });
     if (!res.ok) throw new Error('Lỗi khi lưu cấu hình Cloudinary');
     return res.json();
+  },
+
+  // Violations & Evidence
+  async getViolations(sessionId = null, limit = 50, offset = 0) {
+    const url = sessionId 
+      ? `${API_BASE}/violations?session_id=${sessionId}&limit=${limit}&offset=${offset}`
+      : `${API_BASE}/violations?limit=${limit}&offset=${offset}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Không thể tải danh sách vi phạm');
+    return res.json();
+  },
+
+  async getViolationsSummary(sessionId = null) {
+    const url = sessionId
+      ? `${API_BASE}/violations/summary?session_id=${sessionId}`
+      : `${API_BASE}/violations/summary`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Không thể tải thống kê vi phạm');
+    return res.json();
+  },
+
+  async updateSpeedLimit(sessionId, speedLimit) {
+    const res = await fetch(`${API_BASE}/violations/session/${sessionId}/speed-limit?speed_limit=${speedLimit}`, {
+      method: 'POST'
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Lỗi khi cập nhật giới hạn tốc độ');
+    }
+    return res.json();
+  },
+
+  async deleteViolation(id) {
+    const res = await fetch(`${API_BASE}/violations/${id}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Lỗi khi xóa bản ghi vi phạm');
+    return res.json();
+  },
+
+  getExportCsvUrl(sessionId) {
+    return `${API_BASE}/sessions/${sessionId}/export/csv`;
+  },
+
+  getExportViolationsCsvUrl(sessionId) {
+    return `${API_BASE}/sessions/${sessionId}/export/violations-csv`;
   }
 };
+
 
 
