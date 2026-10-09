@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: ai_traffic_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - db_data:/app/backend_data
+    environment:
+      - PYTHONUNBUFFERED=1
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-dbzuqtojr}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-278466846868427}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-lqKjEaJJByiDQ6lvR6LbwcAXtI0}
+      - CLOUDINARY_FOLDER=${CLOUDINARY_FOLDER:-ai_traffic_dataset}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ai_traffic_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  db_data:

@@ -15,7 +15,8 @@ VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Cấu hình CSDL SQLite
-DATABASE_URL = f"sqlite:///{DB_PATH.as_posix()}"
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DB_PATH.as_posix()}")
+
 
 # Cấu hình Model AI
 DEFAULT_MODEL_NAME = "yolov8n.pt"
