@@ -27,15 +27,15 @@ services:
   # ========================================================
   backend:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: ai_traffic_backend
     restart: unless-stopped
     ports:
       - "8000:8000"
     volumes:
-      - ./data:/app/data
-      - ./backend/traffic.db:/app/backend/traffic.db
+      - ./backend/data:/app/data
+      - ./backend/traffic.db:/app/traffic.db
     environment:
       - PYTHONUNBUFFERED=1
       # Cấu hình kết nối DB: Mặc định nối vào PostgreSQL container (hoặc cấu hình SQLite nếu chạy độc lập)

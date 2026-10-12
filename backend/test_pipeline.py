@@ -17,15 +17,24 @@ from ai.pipeline import TrafficPipeline
 
 def main():
     parser = argparse.ArgumentParser(description="Kiểm thử độc lập AI Traffic Pipeline")
-    parser.add_argument("--video", type=str, default="../data/videos/traffic.mp4", help="Đường dẫn file video .mp4")
+    parser.add_argument("--video", type=str, default="data/videos/traffic.mp4", help="Đường dẫn file video .mp4")
     parser.add_argument("--display", action="store_true", default=True, help="Hiển thị cửa sổ OpenCV")
     args = parser.parse_args()
 
-    video_path = args.video
-    if not Path(video_path).exists():
-        print(f"[!] Không tìm thấy file video: {video_path}")
-        print("    Vui lòng đặt một video mẫu vào data/videos/traffic.mp4 hoặc chỉ định qua --video")
+    backend_dir = Path(__file__).resolve().parent
+    video_p = Path(args.video)
+    if not video_p.exists():
+        if (backend_dir / args.video).exists():
+            video_p = backend_dir / args.video
+        elif (backend_dir / "data" / "videos" / video_p.name).exists():
+            video_p = backend_dir / "data" / "videos" / video_p.name
+
+    if not video_p.exists():
+        print(f"[!] Không tìm thấy file video: {args.video}")
+        print("    Vui lòng đặt một video mẫu vào backend/data/videos/traffic.mp4 hoặc chỉ định qua --video")
         return
+
+    video_path = str(video_p)
 
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -61,12 +70,17 @@ def main():
         # Resize về kích thước chuẩn
         frame = cv2.resize(frame, (target_w, target_h))
 
-        annotated_frame, detections, events = pipeline.process_frame(frame)
+        annotated_frame, detections, events, violations, congestion_info = pipeline.process_frame(frame)
 
         # In log nếu có xe vừa qua vạch
         if events:
             for ev in events:
                 print(f"[CROSSING] Track #{ev['track_id']} | Loại: {ev['vehicle_type']} | Hướng: {ev['direction']} | Tốc độ: {ev.get('speed_kmh', 0):.1f} km/h")
+
+        # In log nếu phát hiện xe vi phạm tốc độ
+        if violations:
+            for v in violations:
+                print(f"[VIOLATION] ⚠️ Quá tốc độ: Track #{v['track_id']} | {v['vehicle_type']} | {v['speed_kmh']:.1f} km/h (Giới hạn: {v['speed_limit']} km/h)")
 
         counts = pipeline.get_counts()
         cv2.putText(

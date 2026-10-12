@@ -11,7 +11,7 @@ from database.database import SessionLocal
 from database.models import SessionModel, CrossingEventModel, TrafficStatModel
 from ai.pipeline import TrafficPipeline
 from ai.violation_service import record_speed_violation
-from config import JPEG_QUALITY, STREAM_FRAME_WIDTH, STREAM_FRAME_HEIGHT, BASE_DIR, VIDEOS_DIR
+from config import JPEG_QUALITY, STREAM_FRAME_WIDTH, STREAM_FRAME_HEIGHT, BASE_DIR, BACKEND_DIR, VIDEOS_DIR
 
 
 class SessionRunner:
@@ -60,16 +60,20 @@ class SessionRunner:
 
     def _run_loop(self):
         """Vòng lặp đọc frame, chạy AI pipeline và ghi nhận CSDL"""
-        # Resolve đường dẫn video linh hoạt (tương đối từ gốc dự án, thư mục data/videos, hoặc URL Cloud)
+        # Resolve đường dẫn video linh hoạt (tương đối từ backend, thư mục data/videos, hoặc URL Cloud)
         video_path = self.video_source
         if not video_path.startswith(("http://", "https://", "rtsp://")) and not os.path.exists(video_path):
-            candidate1 = BASE_DIR / video_path
-            if candidate1.exists():
-                video_path = str(candidate1)
+            candidate_backend = BACKEND_DIR / video_path
+            if candidate_backend.exists():
+                video_path = str(candidate_backend)
             else:
-                candidate2 = VIDEOS_DIR / os.path.basename(video_path)
-                if candidate2.exists():
-                    video_path = str(candidate2)
+                candidate_videos = VIDEOS_DIR / os.path.basename(video_path)
+                if candidate_videos.exists():
+                    video_path = str(candidate_videos)
+                else:
+                    candidate_base = BASE_DIR / video_path
+                    if candidate_base.exists():
+                        video_path = str(candidate_base)
 
         print(f"[Runner {self.session_id}] Bắt đầu xử lý video: {video_path}")
         cap = cv2.VideoCapture(video_path)

@@ -9,8 +9,7 @@ from pathlib import Path
 
 # Đường dẫn thư mục
 BACKEND_DIR = Path(__file__).resolve().parent
-PROJECT_DIR = BACKEND_DIR.parent
-VIDEOS_DIR = PROJECT_DIR / "data" / "videos"
+VIDEOS_DIR = BACKEND_DIR / "data" / "videos"
 TARGET_FILE = VIDEOS_DIR / "traffic.mp4"
 
 VIDEOS_DIR.mkdir(parents=True, exist_ok=True)

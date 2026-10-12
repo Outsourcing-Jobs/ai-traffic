@@ -13,7 +13,7 @@ from ai.cloudinary_service import (
 from config import (
     DATASET_DIR, DATASET_IMAGES_DIR, DATASET_LABELS_DIR,
     DATASET_CLASS_MAP, DATASET_CLASS_NAMES, TARGET_CLASSES,
-    STREAM_FRAME_WIDTH, STREAM_FRAME_HEIGHT, VIDEOS_DIR, BASE_DIR
+    STREAM_FRAME_WIDTH, STREAM_FRAME_HEIGHT, VIDEOS_DIR, BASE_DIR, BACKEND_DIR
 )
 
 
@@ -176,13 +176,17 @@ def extract_batch_from_video(video_source: str, model, session_id: Optional[int]
     # Resolve đường dẫn video
     video_path = video_source
     if not video_path.startswith(("http://", "https://", "rtsp://")) and not os.path.exists(video_path):
-        candidate1 = BASE_DIR / video_path
-        if candidate1.exists():
-            video_path = str(candidate1)
+        candidate_backend = BACKEND_DIR / video_path
+        if candidate_backend.exists():
+            video_path = str(candidate_backend)
         else:
-            candidate2 = VIDEOS_DIR / os.path.basename(video_path)
-            if candidate2.exists():
-                video_path = str(candidate2)
+            candidate_videos = VIDEOS_DIR / os.path.basename(video_path)
+            if candidate_videos.exists():
+                video_path = str(candidate_videos)
+            else:
+                candidate_base = BASE_DIR / video_path
+                if candidate_base.exists():
+                    video_path = str(candidate_base)
 
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():

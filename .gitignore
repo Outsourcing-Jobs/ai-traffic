@@ -40,7 +40,9 @@ backend/.env
 backend/*.pt
 data/models/*.pt
 data/models/*.onnx
-!data/models/.gitkeep
+backend/data/models/*.pt
+backend/data/models/*.onnx
+!**/models/.gitkeep
 
 # ==========================================
 # 5. File Video Nặng (Dùng link Cloud CDN)
@@ -53,7 +55,9 @@ data/models/*.onnx
 backend/*.mp4
 data/videos/*.mp4
 data/videos/*.avi
-!data/videos/.gitkeep
+backend/data/videos/*.mp4
+backend/data/videos/*.avi
+!**/videos/.gitkeep
 
 # ==========================================
 # 6. Cơ sở dữ liệu SQLite
@@ -70,7 +74,10 @@ backend/traffic.db-journal
 data/dataset/images/*.jpg
 data/dataset/images/*.jpeg
 data/dataset/images/*.png
-!data/dataset/images/.gitkeep
+backend/data/dataset/images/*.jpg
+backend/data/dataset/images/*.jpeg
+backend/data/dataset/images/*.png
+!**/dataset/images/.gitkeep
 
 # ==========================================
 # 8. Hệ điều hành & Trình soạn thảo (IDE)

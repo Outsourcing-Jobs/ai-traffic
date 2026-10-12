@@ -25,8 +25,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
 # Cài đặt các dependencies từ requirements.txt
-COPY backend/requirements.txt /app/backend/requirements.txt
-RUN pip install --no-cache-dir -r /app/backend/requirements.txt
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
 
 # Tạo sẵn cấu trúc thư mục dữ liệu
 RUN mkdir -p /app/data/models /app/data/videos /app/data/dataset/images /app/data/dataset/labels
@@ -35,11 +35,8 @@ RUN mkdir -p /app/data/models /app/data/videos /app/data/dataset/images /app/dat
 RUN python -c "from ultralytics import YOLO; YOLO('yolov8n.pt')" && \
     cp yolov8n.pt /app/data/models/yolov8n.pt 2>/dev/null || true
 
-# Copy mã nguồn backend và data
-COPY backend/ /app/backend/
-COPY data/ /app/data/
-
-WORKDIR /app/backend
+# Copy toàn bộ mã nguồn backend và data đã gộp bên trong
+COPY . /app/
 
 # Expose cổng FastAPI
 EXPOSE 8000

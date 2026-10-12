@@ -1,17 +1,19 @@
 import os
 from pathlib import Path
 
-# Thư mục gốc dự án (d:/Jobs/ai-trafic)
-BASE_DIR = Path(__file__).resolve().parent.parent
+# Thư mục backend và thư mục gốc
+BACKEND_DIR = Path(__file__).resolve().parent
+BASE_DIR = BACKEND_DIR.parent
 
-# Đường dẫn dữ liệu
-DATA_DIR = BASE_DIR / "data"
+# Đường dẫn dữ liệu (Tất cả data được đóng gói trong backend/data để độc lập khi deploy)
+DATA_DIR = BACKEND_DIR / "data"
 VIDEOS_DIR = DATA_DIR / "videos"
 MODELS_DIR = DATA_DIR / "models"
 VIOLATIONS_DIR = DATA_DIR / "violations"
-DB_PATH = BASE_DIR / "backend" / "traffic.db"
+DB_PATH = BACKEND_DIR / "traffic.db"
 
 # Đảm bảo các thư mục tồn tại
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 VIOLATIONS_DIR.mkdir(parents=True, exist_ok=True)
@@ -26,7 +28,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DB_PATH.as_posix()}")
 
 # Cấu hình Model AI
 DEFAULT_MODEL_NAME = "yolov8n.pt"
-BACKEND_MODEL = BASE_DIR / "backend" / DEFAULT_MODEL_NAME
+BACKEND_MODEL = BACKEND_DIR / DEFAULT_MODEL_NAME
 MODEL_PATH = BACKEND_MODEL if BACKEND_MODEL.exists() else (MODELS_DIR / DEFAULT_MODEL_NAME)
 
 # Lớp COCO đối tượng giao thông cần theo dõi
@@ -63,7 +65,7 @@ DATASET_CLASS_MAP = {
 DATASET_CLASS_NAMES = ["car", "motorcycle", "bus", "truck"]
 
 # Tự động nạp file .env nếu có
-ENV_PATH = BASE_DIR / "backend" / ".env"
+ENV_PATH = BACKEND_DIR / ".env"
 if ENV_PATH.exists():
     try:
         with open(ENV_PATH, "r", encoding="utf-8") as _f:
