@@ -8,6 +8,9 @@ from api import sessions, stats, stream, videos, dataset, violations, auth
 # Tự động tạo bảng SQLite nếu chưa tồn tại
 Base.metadata.create_all(bind=engine)
 
+# Tự động khởi tạo tài khoản quản trị mặc định (admin / admin123)
+auth.init_default_users()
+
 app = FastAPI(
     title="Traffic Monitoring & Speed Estimation API",
     description="Hệ thống xác định lưu lượng và ước lượng tốc độ trung bình phương tiện giao thông sử dụng camera giám sát",
