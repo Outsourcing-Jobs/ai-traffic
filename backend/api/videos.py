@@ -14,28 +14,61 @@ from config import VIDEOS_DIR
 
 DEFAULT_SEEDS = [
     {
-        "title": "Cloud CDN: Video Cao Tốc Mẫu (Roboflow)",
-        "url": "https://media.roboflow.com/supervision/video/vehicles.mp4",
-        "description": "Video mẫu xe cộ chất lượng cao trên Cloud CDN trực tiếp"
+        "title": "☁️ Cloud: Video Xe Cộ Giao Thông (traffic.mp4)",
+        "url": "https://res.cloudinary.com/djesc4hru/video/upload/v1791972473/traffic.mp4",
+        "description": "Video mẫu lưu lượng xe cộ chất lượng cao trên Cloudinary CDN"
     },
     {
-        "title": "Local Mẫu: data/videos/traffic.mp4",
-        "url": "data/videos/traffic.mp4",
-        "description": "File video lưu cục bộ trong máy"
+        "title": "☁️ Cloud: Giao Thông Hà Nội - Ngã Tư (hanoi_ngatu_v1.mp4)",
+        "url": "https://res.cloudinary.com/djesc4hru/video/upload/v1791771318/hanoi_ngatu_v1.mp4",
+        "description": "Video thực tế ngã tư giao thông Hà Nội trên Cloudinary CDN"
     }
 ]
 
 
+def init_default_videos():
+    """Tự động đảm bảo 2 link video Cloud CDN mẫu luôn tồn tại trong CSDL"""
+    try:
+        from database.database import SessionLocal
+        with SessionLocal() as db:
+            # Xóa các link demo/placeholder cũ nếu có (ví dụ Roboflow)
+            db.query(VideoSourceModel).filter(VideoSourceModel.url.like("%roboflow%")).delete(synchronize_session=False)
+
+            for seed in DEFAULT_SEEDS:
+                existing = db.query(VideoSourceModel).filter(VideoSourceModel.url == seed["url"]).first()
+                if not existing:
+                    new_item = VideoSourceModel(
+                        title=seed["title"],
+                        url=seed["url"],
+                        description=seed["description"]
+                    )
+                    db.add(new_item)
+            db.commit()
+    except Exception as e:
+        print(f"[Init Videos] Lỗi khởi tạo video sources: {e}")
+
+
 @router.get("", response_model=List[VideoSourceResponse])
 def list_video_sources(db: Session = Depends(get_db)):
-    """Lấy danh sách các nguồn video (tự động quét các file trong data/videos và CSDL)"""
-    # 1. Tự động quét các file video có trong data/videos/
+    """Lấy danh sách các nguồn video (tự động đảm bảo các link Cloud chuẩn và quét file local nếu có)"""
+    # 1. Đảm bảo 2 link video Cloud chuẩn luôn tồn tại trong DB
+    for seed in DEFAULT_SEEDS:
+        existing = db.query(VideoSourceModel).filter(VideoSourceModel.url == seed["url"]).first()
+        if not existing:
+            new_item = VideoSourceModel(
+                title=seed["title"],
+                url=seed["url"],
+                description=seed["description"]
+            )
+            db.add(new_item)
+    db.commit()
+
+    # 2. Tự động quét các file video có trong data/videos/ (nếu có trên máy)
     supported_exts = {".mp4", ".avi", ".mkv", ".mov"}
     if VIDEOS_DIR.exists():
         for file_path in VIDEOS_DIR.iterdir():
             if file_path.is_file() and file_path.suffix.lower() in supported_exts:
                 rel_url = f"data/videos/{file_path.name}"
-                # Kiểm tra đã có trong DB chưa
                 existing = db.query(VideoSourceModel).filter(VideoSourceModel.url == rel_url).first()
                 if not existing:
                     file_size_mb = round(file_path.stat().st_size / (1024 * 1024), 1)
@@ -48,19 +81,6 @@ def list_video_sources(db: Session = Depends(get_db)):
         db.commit()
 
     items = db.query(VideoSourceModel).order_by(VideoSourceModel.id.asc()).all()
-
-    # Nếu DB chưa có bản ghi nào, tự động seed các link Cloud mẫu ban đầu
-    if len(items) == 0:
-        for seed in DEFAULT_SEEDS:
-            new_item = VideoSourceModel(
-                title=seed["title"],
-                url=seed["url"],
-                description=seed["description"]
-            )
-            db.add(new_item)
-        db.commit()
-        items = db.query(VideoSourceModel).order_by(VideoSourceModel.id.asc()).all()
-
     return items
 
 

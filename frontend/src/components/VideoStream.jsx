@@ -15,7 +15,7 @@ export default function VideoStream({ session, onStatusChange }) {
   const [datasetSummary, setDatasetSummary] = useState(null);
   const [cloudinaryStatus, setCloudinaryStatus] = useState(null);
   const [showCloudModal, setShowCloudModal] = useState(false);
-  const [cloudForm, setCloudForm] = useState({ cloud_name: 'dbzuqtojr', api_key: '', api_secret: '' });
+  const [cloudForm, setCloudForm] = useState({ cloud_name: 'djesc4hru', api_key: '', api_secret: '' });
   const [showSecret, setShowSecret] = useState(false);
   const [savingCloud, setSavingCloud] = useState(false);
 
@@ -550,7 +550,7 @@ export default function VideoStream({ session, onStatusChange }) {
                 <input
                   type="text"
                   className="input-field"
-                  placeholder="Ví dụ: dbzuqtojr"
+                  placeholder="Ví dụ: djesc4hru"
                   value={cloudForm.cloud_name}
                   onChange={(e) => setCloudForm({ ...cloudForm, cloud_name: e.target.value })}
                   required

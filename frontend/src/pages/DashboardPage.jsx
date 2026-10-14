@@ -57,12 +57,13 @@ export default function DashboardPage({ session }) {
 
   // Dữ liệu cho Biểu đồ Đường: Lưu lượng xe theo thời gian
   const lineLabels = stats.map((s) => new Date(s.timestamp).toLocaleTimeString('vi-VN'));
+  const hasStats = stats.length > 0;
   const lineData = {
-    labels: lineLabels.length > 0 ? lineLabels : ['00:00', '00:01', '00:02', '00:03'],
+    labels: hasStats ? lineLabels : ['Chưa có dữ liệu'],
     datasets: [
       {
         label: 'Tổng số xe / phút',
-        data: stats.length > 0 ? stats.map((s) => s.total_count) : [5, 12, 19, 15],
+        data: hasStats ? stats.map((s) => s.total_count) : [0],
         borderColor: '#2563eb',
         backgroundColor: 'rgba(37, 99, 235, 0.12)',
         tension: 0.35,
@@ -70,7 +71,7 @@ export default function DashboardPage({ session }) {
       },
       {
         label: 'Tốc độ TB (km/h)',
-        data: stats.length > 0 ? stats.map((s) => s.avg_speed) : [28, 32, 29, 31],
+        data: hasStats ? stats.map((s) => s.avg_speed) : [0],
         borderColor: '#059669',
         borderDash: [5, 5],
         tension: 0.35,
@@ -79,8 +80,8 @@ export default function DashboardPage({ session }) {
     ]
   };
 
-  // Dữ liệu cho Biểu đồ Tròn: Tỷ trọng loại xe
-  const byType = summary?.by_type || { car: 12, motorcycle: 8, truck: 4, bus: 2 };
+  // Dữ liệu cho Biểu đồ Tròn: Tỷ trọng loại xe (chỉ lấy số thực từ CSDL)
+  const byType = summary?.by_type || { car: 0, motorcycle: 0, truck: 0, bus: 0 };
   const doughnutData = {
     labels: ['Ô tô con', 'Xe máy', 'Xe tải', 'Xe buýt'],
     datasets: [
