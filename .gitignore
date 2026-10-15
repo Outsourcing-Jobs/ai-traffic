@@ -69,15 +69,19 @@ backend/traffic.db
 backend/traffic.db-journal
 
 # ==========================================
-# 7. Dataset Hình ảnh (Ảnh đã đẩy lên Cloudinary)
+# 7. Dataset & Ảnh Vi Phạm (Đã lưu trữ Cloudinary)
 # ==========================================
-data/dataset/images/*.jpg
-data/dataset/images/*.jpeg
-data/dataset/images/*.png
-backend/data/dataset/images/*.jpg
-backend/data/dataset/images/*.jpeg
-backend/data/dataset/images/*.png
+# Ảnh dataset
+**/dataset/images/*
 !**/dataset/images/.gitkeep
+
+# Nhãn dataset tọa độ (.txt)
+**/dataset/labels/*.txt
+!**/dataset/labels/.gitkeep
+
+# Ảnh bằng chứng vi phạm
+**/violations/*
+!**/violations/.gitkeep
 
 # ==========================================
 # 8. Hệ điều hành & Trình soạn thảo (IDE)

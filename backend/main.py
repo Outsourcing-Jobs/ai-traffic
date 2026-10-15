@@ -11,8 +11,6 @@ Base.metadata.create_all(bind=engine)
 # Tự động khởi tạo tài khoản quản trị mặc định (admin / admin123)
 auth.init_default_users()
 
-# Tự động đảm bảo 2 nguồn video Cloudinary mẫu luôn sẵn sàng trong CSDL
-videos.init_default_videos()
 
 app = FastAPI(
     title="Traffic Monitoring & Speed Estimation API",

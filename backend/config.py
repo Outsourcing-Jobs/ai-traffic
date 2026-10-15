@@ -22,8 +22,23 @@ VIOLATIONS_DIR.mkdir(parents=True, exist_ok=True)
 DEFAULT_SPEED_LIMIT = 50.0
 
 
-# Cấu hình CSDL SQLite
+# Tự động nạp file .env nếu có (nạp trước để các biến môi trường có hiệu lực)
+ENV_PATH = BACKEND_DIR / ".env"
+if ENV_PATH.exists():
+    try:
+        with open(ENV_PATH, "r", encoding="utf-8") as _f:
+            for _line in _f:
+                _line = _line.strip()
+                if _line and not _line.startswith("#") and "=" in _line:
+                    _k, _v = _line.split("=", 1)
+                    os.environ[_k.strip()] = _v.strip().strip("'\"")
+    except Exception:
+        pass
+
+# Cấu hình CSDL (Mặc định SQLite nếu không khai báo DATABASE_URL)
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DB_PATH.as_posix()}")
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 
 # Cấu hình Model AI
@@ -63,19 +78,6 @@ DATASET_CLASS_MAP = {
     7: 3   # truck
 }
 DATASET_CLASS_NAMES = ["car", "motorcycle", "bus", "truck"]
-
-# Tự động nạp file .env nếu có
-ENV_PATH = BACKEND_DIR / ".env"
-if ENV_PATH.exists():
-    try:
-        with open(ENV_PATH, "r", encoding="utf-8") as _f:
-            for _line in _f:
-                _line = _line.strip()
-                if _line and not _line.startswith("#") and "=" in _line:
-                    _k, _v = _line.split("=", 1)
-                    os.environ[_k.strip()] = _v.strip().strip("'\"")
-    except Exception:
-        pass
 
 # Cấu hình Cloudinary (Tải ảnh lên Cloud lưu trữ)
 CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "")

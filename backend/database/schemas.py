@@ -47,9 +47,9 @@ class SessionResponse(BaseModel):
     name: str
     camera_url: Optional[str]
     status: str
-    started_at: datetime
-    ended_at: Optional[datetime]
-    config_json: Optional[str]
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
+    config_json: Optional[str] = None
 
     class Config:
         from_attributes = True
