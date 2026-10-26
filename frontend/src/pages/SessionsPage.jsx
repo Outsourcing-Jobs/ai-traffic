@@ -200,12 +200,17 @@ export default function SessionsPage({ currentSession, onSelectSession }) {
                   fontWeight: 600
                 }}
               >
-                {videoSources.map((v) => (
-                  <option key={v.id} value={v.url}>
-                    {v.url.startsWith('http') ? '☁️ [Cloud] ' : '📁 [Local] '}
-                    {v.title}
-                  </option>
-                ))}
+                {videoSources.map((v) => {
+                  let tag = '📁 [Video .MP4] ';
+                  if (v.url.startsWith('rtsp')) tag = '📹 [Camera IP RTSP] ';
+                  else if (v.url.endsWith('.avi')) tag = '🎞️ [Video .AVI] ';
+                  else if (v.url.startsWith('http')) tag = '☁️ [Cloud CDN] ';
+                  return (
+                    <option key={v.id} value={v.url}>
+                      {tag}{v.title}
+                    </option>
+                  );
+                })}
                 <option value="custom">➕ Nhập link URL khác trực tiếp...</option>
               </select>
             </div>
@@ -268,7 +273,7 @@ export default function SessionsPage({ currentSession, onSelectSession }) {
                     <td>
                       <div style={{ fontWeight: 700, color: isSelected ? '#1d4ed8' : '#0f172a' }}>{s.name}</div>
                       <div style={{ fontSize: '0.75rem', color: '#64748b', fontFamily: 'monospace', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.camera_url}>
-                        {s.camera_url?.startsWith('http') ? '☁️ ' : '📁 '}
+                        {s.camera_url?.startsWith('rtsp') ? '📹 [RTSP] ' : (s.camera_url?.startsWith('http') ? '☁️ [Cloud] ' : (s.camera_url?.endsWith('.avi') ? '🎞️ [AVI] ' : '📁 [MP4] '))}
                         {s.camera_url}
                       </div>
                     </td>

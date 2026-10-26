@@ -37,10 +37,13 @@ export default function KPICards({ summary, liveCounts }) {
 
       <div className="kpi-card amber">
         <div>
-          <div className="kpi-title">Lưu Lượng Tức Thời</div>
+          <div className="kpi-title">Lưu Lượng Phương Tiện</div>
           <div className="kpi-val">
             {vpm > 0 ? vpm.toFixed(1) : '--'}
             <span className="kpi-unit">xe/phút</span>
+          </div>
+          <div style={{ fontSize: '0.75rem', color: '#b45309', marginTop: '0.25rem', fontWeight: 700 }}>
+            Quy đổi: {summary?.vehicles_per_hour ? Math.round(summary.vehicles_per_hour) : (vpm > 0 ? Math.round(vpm * 60) : '--')} xe/giờ
           </div>
         </div>
         <div className="kpi-icon" style={{ color: '#fbbf24' }}>

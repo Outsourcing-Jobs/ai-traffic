@@ -244,24 +244,52 @@ export default function VideoStream({ session, onStatusChange }) {
           </div>
         )}
 
-        {/* Video Overlay Specs */}
+        {/* Video Overlay Specs & AI Engine Info */}
         {isRunning && (
           <div
             style={{
               position: 'absolute',
               bottom: '12px',
               left: '12px',
-              padding: '6px 12px',
-              background: 'rgba(15, 23, 42, 0.8)',
-              backdropFilter: 'blur(8px)',
-              borderRadius: '6px',
-              fontSize: '0.75rem',
-              color: '#34d399',
-              fontFamily: 'monospace',
-              border: '1px solid rgba(255, 255, 255, 0.2)'
+              display: 'flex',
+              gap: '8px',
+              alignItems: 'center',
+              flexWrap: 'wrap'
             }}
           >
-            1280x720 @ 30fps
+            <div
+              style={{
+                padding: '5px 10px',
+                background: 'rgba(15, 23, 42, 0.85)',
+                backdropFilter: 'blur(8px)',
+                borderRadius: '6px',
+                fontSize: '0.75rem',
+                color: '#38bdf8',
+                fontFamily: 'monospace',
+                border: '1px solid rgba(56, 189, 248, 0.35)',
+                fontWeight: 700
+              }}
+            >
+              🧠 AI: YOLOv8-Traffic-VN (Fine-tuned)
+            </div>
+            <div
+              style={{
+                padding: '5px 10px',
+                background: 'rgba(15, 23, 42, 0.85)',
+                backdropFilter: 'blur(8px)',
+                borderRadius: '6px',
+                fontSize: '0.75rem',
+                color: '#34d399',
+                fontFamily: 'monospace',
+                border: '1px solid rgba(255, 255, 255, 0.2)'
+              }}
+            >
+              {session?.camera_url?.startsWith('rtsp')
+                ? '📹 RTSP Live IP @ 30fps'
+                : session?.camera_url?.endsWith('.avi')
+                ? '🎞️ File AVI @ 30fps'
+                : '📁 File MP4 @ 30fps'}
+            </div>
           </div>
         )}
       </div>

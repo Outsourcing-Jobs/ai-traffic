@@ -5,7 +5,6 @@ import {
   BarChart3, 
   Radio, 
   Layers, 
-  AlertTriangle, 
   LogOut, 
   UserCheck 
 } from 'lucide-react';
@@ -51,15 +50,6 @@ export default function Navbar({ activeTab, setActiveTab, currentSession, user, 
             >
               <BarChart3 size={18} />
               <span>Dashboard Thống Kê</span>
-            </button>
-
-            <button
-              id="nav-violations-btn"
-              className={`nav-btn ${activeTab === 'violations' ? 'active' : ''}`}
-              onClick={() => setActiveTab('violations')}
-            >
-              <AlertTriangle size={18} style={{ color: activeTab === 'violations' ? '#ef4444' : '#f87171' }} />
-              <span>Vi Phạm Tốc Độ</span>
             </button>
 
             <button

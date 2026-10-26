@@ -16,8 +16,39 @@ DEFAULT_SEEDS = []
 
 
 def init_default_videos():
-    """Giữ hàm để tương thích khởi động (không tự động thêm seed)"""
-    pass
+    """Tự động bổ sung nguồn video .AVI và Camera IP RTSP vào CSDL nếu chưa có"""
+    from database.database import SessionLocal
+    db = SessionLocal()
+    try:
+        # 1. Kiểm tra video AVI
+        avi_exists = db.query(VideoSourceModel).filter(VideoSourceModel.url.like("%.avi%")).first()
+        if not avi_exists:
+            db.add(VideoSourceModel(
+                title="Camera Giao Thông Định Dạng AVI (.avi)",
+                url="data/videos/traffic_sample.avi",
+                description="Định dạng video AVI tương thích theo yêu cầu đề tài"
+            ))
+
+        # 2. Kiểm tra nguồn Camera IP RTSP
+        rtsp_exists = db.query(VideoSourceModel).filter(VideoSourceModel.url.like("rtsp://%")).first()
+        if not rtsp_exists:
+            db.add(VideoSourceModel(
+                title="Camera IP Giao Thông (RTSP Livestream Mẫu)",
+                url="rtsp://demo:demo@192.168.1.100:554/stream1",
+                description="Luồng Camera IP trực tiếp qua giao thức RTSP độ trễ thấp"
+            ))
+
+        # 3. Dọn dẹp link rác
+        bad_link = db.query(VideoSourceModel).filter(VideoSourceModel.url == "https://abc.con").first()
+        if bad_link:
+            db.delete(bad_link)
+
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"[Videos] Lỗi init default videos: {e}")
+    finally:
+        db.close()
 
 
 @router.get("", response_model=List[VideoSourceResponse])

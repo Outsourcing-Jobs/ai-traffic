@@ -70,17 +70,12 @@ def main():
         # Resize về kích thước chuẩn
         frame = cv2.resize(frame, (target_w, target_h))
 
-        annotated_frame, detections, events, violations, congestion_info = pipeline.process_frame(frame)
+        annotated_frame, detections, events = pipeline.process_frame(frame)
 
         # In log nếu có xe vừa qua vạch
         if events:
             for ev in events:
                 print(f"[CROSSING] Track #{ev['track_id']} | Loại: {ev['vehicle_type']} | Hướng: {ev['direction']} | Tốc độ: {ev.get('speed_kmh', 0):.1f} km/h")
-
-        # In log nếu phát hiện xe vi phạm tốc độ
-        if violations:
-            for v in violations:
-                print(f"[VIOLATION] ⚠️ Quá tốc độ: Track #{v['track_id']} | {v['vehicle_type']} | {v['speed_kmh']:.1f} km/h (Giới hạn: {v['speed_limit']} km/h)")
 
         counts = pipeline.get_counts()
         cv2.putText(

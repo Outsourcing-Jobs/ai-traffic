@@ -10,7 +10,6 @@ import cv2
 from database.database import SessionLocal
 from database.models import SessionModel, CrossingEventModel, TrafficStatModel
 from ai.pipeline import TrafficPipeline
-from ai.violation_service import record_speed_violation
 from config import JPEG_QUALITY, STREAM_FRAME_WIDTH, STREAM_FRAME_HEIGHT, BASE_DIR, BACKEND_DIR, VIDEOS_DIR
 
 
@@ -33,14 +32,6 @@ class SessionRunner:
 
         self.latest_jpeg: Optional[bytes] = None
         self.latest_raw_frame = None
-        self.logged_violation_tracks = set()
-        self.latest_congestion = {
-            "level": "FLUID",
-            "text": "Lưu thông thông thoáng",
-            "active_count": 0,
-            "current_avg_speed": 0.0,
-            "speed_limit": self.pipeline.speed_limit
-        }
         self.lock = threading.Lock()
 
 
@@ -75,37 +66,63 @@ class SessionRunner:
                     if candidate_base.exists():
                         video_path = str(candidate_base)
 
-        print(f"[Runner {self.session_id}] Bắt đầu xử lý video: {video_path}")
+        # Nhận diện loại nguồn đầu vào: RTSP Camera IP, URL trực tuyến, hay Video file (.mp4, .avi)
+        is_rtsp = video_path.lower().startswith(("rtsp://", "rtsps://"))
+        is_stream = is_rtsp or video_path.lower().startswith(("http://", "https://"))
+
+        if is_rtsp:
+            # Thiết lập FFMPEG TCP transport và nobuffer để triệt tiêu 100% độ trễ cho luồng Camera IP
+            os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|fflags;nobuffer|max_delay;500000"
+
+        print(f"[Runner {self.session_id}] Bắt đầu xử lý nguồn: {video_path} (RTSP={is_rtsp})")
         cap = cv2.VideoCapture(video_path)
+        if is_rtsp:
+            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
         if not cap.isOpened():
-            print(f"[Runner {self.session_id}] Không thể mở video: {video_path}")
+            print(f"[Runner {self.session_id}] Không thể mở nguồn video/camera: {video_path}")
             self.is_running = False
             return
 
         fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
-        frame_delay = 1.0 / fps
+        frame_delay = 1.0 / max(fps, 10.0)
 
         db = SessionLocal()
         last_stat_time = time.time()
         minute_events = []
+        reconnect_attempts = 0
 
         try:
             while self.is_running:
                 start_t = time.time()
                 ret, frame = cap.read()
                 if not ret:
-                    # Video kết thúc -> Tua lại từ đầu để tiếp tục demo liên tục
-                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                    self.pipeline.on_video_loop()
-                    self.logged_violation_tracks.clear()
-                    time.sleep(0.1)
-                    continue
+                    if is_stream:
+                        reconnect_attempts += 1
+                        print(f"[Runner {self.session_id}] Luồng stream bị gián đoạn, đang thử kết nối lại lần {reconnect_attempts}/5...")
+                        time.sleep(1.0)
+                        cap.release()
+                        cap = cv2.VideoCapture(video_path)
+                        if is_rtsp:
+                            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                        if reconnect_attempts >= 5:
+                            print(f"[Runner {self.session_id}] Không thể khôi phục kết nối Camera IP RTSP.")
+                            break
+                        continue
+                    else:
+                        # Video file (.mp4, .avi) kết thúc -> Tua lại từ đầu để tiếp tục demo liên tục
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                        self.pipeline.on_video_loop()
+                        time.sleep(0.1)
+                        continue
+
+                reconnect_attempts = 0
 
                 # Resize frame về kích thước chuẩn stream
                 frame = cv2.resize(frame, (STREAM_FRAME_WIDTH, STREAM_FRAME_HEIGHT))
 
                 # Chạy AI Pipeline
-                annotated_frame, detections, events, violations, congestion_info = self.pipeline.process_frame(frame)
+                annotated_frame, detections, events = self.pipeline.process_frame(frame)
 
                 # Nén ảnh thành JPEG cho stream
                 encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY]
@@ -113,23 +130,6 @@ class SessionRunner:
                 with self.lock:
                     self.latest_jpeg = buffer.tobytes()
                     self.latest_raw_frame = frame.copy()
-                    self.latest_congestion = congestion_info
-
-                # Lưu các xe vi phạm tốc độ (chụp ảnh bằng chứng & ghi CSDL)
-                if violations:
-                    for v in violations:
-                        tid = v["track_id"]
-                        if tid not in self.logged_violation_tracks:
-                            self.logged_violation_tracks.add(tid)
-                            record_speed_violation(
-                                session_id=self.session_id,
-                                track_id=tid,
-                                vehicle_type=v["vehicle_type"],
-                                speed_kmh=v["speed_kmh"],
-                                speed_limit=v["speed_limit"],
-                                frame=frame,
-                                bbox=v["bbox"]
-                            )
 
                 # Lưu các sự kiện xe cắt qua vạch vào CSDL
                 if events:
@@ -179,11 +179,14 @@ class SessionRunner:
                     last_stat_time = time.time()
                     minute_events = []
 
-                # Điều chỉnh tốc độ xử lý khớp FPS video
-                elapsed = time.time() - start_t
-                sleep_time = frame_delay - elapsed
-                if sleep_time > 0:
-                    time.sleep(sleep_time)
+                # Điều chỉnh tốc độ xử lý: với video file khớp FPS gốc, với live stream RTSP nhả CPU tối thiểu
+                if not is_stream:
+                    elapsed = time.time() - start_t
+                    sleep_time = frame_delay - elapsed
+                    if sleep_time > 0:
+                        time.sleep(sleep_time)
+                else:
+                    time.sleep(0.002)
 
         except Exception as e:
             print(f"[Runner {self.session_id}] Lỗi runtime: {e}")
@@ -204,17 +207,6 @@ class SessionRunner:
             if self.latest_raw_frame is not None:
                 return self.latest_raw_frame.copy()
             return None
-
-    def get_congestion_info(self) -> Dict[str, Any]:
-        """Lấy thông tin đánh giá mức độ ùn tắc giao thông thời gian thực"""
-        with self.lock:
-            return self.latest_congestion.copy()
-
-    def set_speed_limit(self, limit: float):
-        """Cập nhật tốc độ giới hạn động cho pipeline"""
-        with self.lock:
-            self.pipeline.speed_limit = float(limit)
-            self.latest_congestion["speed_limit"] = float(limit)
 
 
 

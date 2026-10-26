@@ -139,15 +139,6 @@ export default function DashboardPage({ session }) {
                 <FileSpreadsheet size={16} />
                 <span>Xuất CSV Lưu Lượng</span>
               </a>
-              <a
-                href={api.getExportViolationsCsvUrl(session.id)}
-                download
-                className="btn btn-secondary"
-                style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#dc2626', borderColor: '#fecaca' }}
-              >
-                <Download size={16} />
-                <span>Xuất CSV Vi Phạm</span>
-              </a>
             </>
           )}
 
@@ -204,6 +195,7 @@ export default function DashboardPage({ session }) {
               <th>Xe Tải</th>
               <th>Xe Buýt</th>
               <th>Tổng Số Xe</th>
+              <th>Lưu Lượng / Giờ</th>
               <th>Tốc Độ TB</th>
               <th>Tốc Độ Tối Đa</th>
             </tr>
@@ -219,13 +211,16 @@ export default function DashboardPage({ session }) {
                   <td>{row.truck_count}</td>
                   <td>{row.bus_count}</td>
                   <td style={{ fontWeight: 700, color: '#2563eb' }}>{row.total_count}</td>
+                  <td className="font-mono" style={{ color: '#d97706', fontWeight: 700 }}>
+                    {row.flow_rate_per_hour ? `${row.flow_rate_per_hour} xe/h` : `${Math.round(row.total_count * (60 / (row.period_min || 1)))} xe/h`}
+                  </td>
                   <td className="font-mono">{row.avg_speed.toFixed(1)} km/h</td>
                   <td className="font-mono" style={{ color: '#e11d48', fontWeight: 600 }}>{row.max_speed.toFixed(1)} km/h</td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="9" style={{ textAlign: 'center', color: '#94a3b8', padding: '1.5rem' }}>
+                <td colSpan="10" style={{ textAlign: 'center', color: '#94a3b8', padding: '1.5rem' }}>
                   Hệ thống đang tích lũy dữ liệu thống kê (CSDL tổng hợp tự động mỗi chu kỳ 1 phút).
                 </td>
               </tr>

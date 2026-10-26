@@ -41,21 +41,37 @@ if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 
-# Cấu hình Model AI
+# Cấu hình Model AI (Ưu tiên mô hình đã qua Fine-tuning trên xe Việt Nam)
+VN_MODEL_NAME = "yolov8_traffic_vn.pt"
+VN_MODEL_PATH = MODELS_DIR / VN_MODEL_NAME
 DEFAULT_MODEL_NAME = "yolov8n.pt"
 BACKEND_MODEL = BACKEND_DIR / DEFAULT_MODEL_NAME
-MODEL_PATH = BACKEND_MODEL if BACKEND_MODEL.exists() else (MODELS_DIR / DEFAULT_MODEL_NAME)
 
-# Lớp COCO đối tượng giao thông cần theo dõi
-# 1: bicycle (xe 2 bánh/xe đạp), 2: car, 3: motorcycle, 5: bus, 7: truck
-TARGET_CLASSES = [1, 2, 3, 5, 7]
-CLASS_NAMES_MAP = {
-    1: "motorcycle",
-    2: "car",
-    3: "motorcycle",
-    5: "bus",
-    7: "truck"
-}
+if VN_MODEL_PATH.exists():
+    MODEL_PATH = VN_MODEL_PATH
+    ACTIVE_MODEL_NAME = VN_MODEL_NAME
+    IS_FINE_TUNED = True
+    TARGET_CLASSES = [0, 1, 2, 3]
+    CLASS_NAMES_MAP = {
+        0: "car",
+        1: "motorcycle",
+        2: "bus",
+        3: "truck"
+    }
+else:
+    MODEL_PATH = BACKEND_MODEL if BACKEND_MODEL.exists() else (MODELS_DIR / DEFAULT_MODEL_NAME)
+    ACTIVE_MODEL_NAME = DEFAULT_MODEL_NAME
+    IS_FINE_TUNED = False
+    # Lớp COCO đối tượng giao thông cần theo dõi
+    # 1: bicycle, 2: car, 3: motorcycle, 5: bus, 7: truck
+    TARGET_CLASSES = [1, 2, 3, 5, 7]
+    CLASS_NAMES_MAP = {
+        1: "motorcycle",
+        2: "car",
+        3: "motorcycle",
+        5: "bus",
+        7: "truck"
+    }
 
 # Cấu hình Stream Video
 STREAM_FRAME_WIDTH = 1280

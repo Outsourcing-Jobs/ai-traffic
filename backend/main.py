@@ -3,13 +3,16 @@ from fastapi import FastAPI
 # pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
 from database.database import engine, Base
-from api import sessions, stats, stream, videos, dataset, violations, auth
+from api import sessions, stats, stream, videos, dataset, auth
 
 # Tự động tạo bảng SQLite nếu chưa tồn tại
 Base.metadata.create_all(bind=engine)
 
 # Tự động khởi tạo tài khoản quản trị mặc định (admin / admin123)
 auth.init_default_users()
+
+# Tự động khởi tạo nguồn video AVI và RTSP Camera IP mẫu nếu chưa có
+videos.init_default_videos()
 
 
 app = FastAPI(
@@ -21,9 +24,9 @@ app = FastAPI(
 # Danh sách các domain được phép truy cập
 ALLOWED_ORIGINS = [
     "https://smarttraffic-monitoring.vercel.app",
-    "http://localhost:5173",
+    "http://localhost:5174",
     "http://localhost:3000",
-    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
     "http://127.0.0.1:3000"
 ]
 
@@ -76,7 +79,6 @@ async def add_cors_headers_middleware(request, call_next):
 app.include_router(auth.router)
 app.include_router(sessions.router)
 app.include_router(stats.router)
-app.include_router(violations.router)
 app.include_router(stream.router)
 app.include_router(videos.router)
 app.include_router(dataset.router)
@@ -104,4 +106,4 @@ def health_check():
 if __name__ == "__main__":
     # pyrefly: ignore [missing-import]
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)

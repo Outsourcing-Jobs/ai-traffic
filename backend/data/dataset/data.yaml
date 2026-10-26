@@ -1,6 +1,6 @@
-path: D:\Jobs\ai-trafic\data\dataset
-train: images
-val: images
+path: D:/Jobs/ai-trafic/backend/data/dataset
+train: images/train
+val: images/val
 nc: 4
 names:
   0: car

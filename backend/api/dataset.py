@@ -83,6 +83,23 @@ def auto_extract_batch(session_id: int, count: int = Query(50, ge=5, le=100)):
         raise HTTPException(status_code=500, detail=f"Lỗi khi trích xuất video: {str(e)}")
 
 
+@router.post("/batch-extract-all")
+def api_batch_extract_all(count_per_video: int = Query(80, ge=20, le=120)):
+    """
+    Tự động quét toàn bộ video trong data/videos,
+    trích xuất count_per_video ảnh cho mỗi video và lưu trực tiếp tại local.
+    """
+    from ai.batch_extract_dataset import run_batch_extraction
+    import threading
+    t = threading.Thread(target=run_batch_extraction, kwargs={"count_per_video": count_per_video}, daemon=True)
+    t.start()
+    return {
+        "success": True,
+        "message": f"Đã khởi động tiến trình trích xuất tự động ~{count_per_video} ảnh/video chạy ngầm!",
+        "count_per_video": count_per_video
+    }
+
+
 @router.get("/summary")
 def get_summary():
     """Lấy số liệu thống kê tổng quan của Bộ dữ liệu"""

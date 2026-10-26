@@ -243,50 +243,8 @@ export const api = {
     return res.json();
   },
 
-  // Violations & Evidence
-  async getViolations(sessionId = null, limit = 50, offset = 0) {
-    const url = sessionId 
-      ? `${API_BASE}/violations?session_id=${sessionId}&limit=${limit}&offset=${offset}`
-      : `${API_BASE}/violations?limit=${limit}&offset=${offset}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Không thể tải danh sách vi phạm');
-    return res.json();
-  },
-
-  async getViolationsSummary(sessionId = null) {
-    const url = sessionId
-      ? `${API_BASE}/violations/summary?session_id=${sessionId}`
-      : `${API_BASE}/violations/summary`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Không thể tải thống kê vi phạm');
-    return res.json();
-  },
-
-  async updateSpeedLimit(sessionId, speedLimit) {
-    const res = await fetch(`${API_BASE}/violations/session/${sessionId}/speed-limit?speed_limit=${speedLimit}`, {
-      method: 'POST'
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || 'Lỗi khi cập nhật giới hạn tốc độ');
-    }
-    return res.json();
-  },
-
-  async deleteViolation(id) {
-    const res = await fetch(`${API_BASE}/violations/${id}`, {
-      method: 'DELETE'
-    });
-    if (!res.ok) throw new Error('Lỗi khi xóa bản ghi vi phạm');
-    return res.json();
-  },
-
   getExportCsvUrl(sessionId) {
     return `${API_BASE}/sessions/${sessionId}/export/csv`;
-  },
-
-  getExportViolationsCsvUrl(sessionId) {
-    return `${API_BASE}/sessions/${sessionId}/export/violations-csv`;
   }
 };
 

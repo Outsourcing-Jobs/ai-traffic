@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from database.database import get_db
-from database.models import TrafficStatModel, CrossingEventModel, SessionModel, ViolationModel
+from database.models import TrafficStatModel, CrossingEventModel, SessionModel
 from database.schemas import TrafficStatResponse, CrossingEventResponse, KPISummaryResponse
 from video_manager import video_manager
 
@@ -51,48 +51,24 @@ def get_session_summary(session_id: int, db: Session = Depends(get_db)):
         if vtype in by_type:
             by_type[vtype] = count
 
-    # Tính xe/phút ước tính
+    # Tính xe/phút và xe/giờ quy đổi ước tính
     vpm = 0.0
+    vph = 0.0
     if session.started_at:
         from datetime import datetime
         now = session.ended_at or datetime.now()
         duration_min = max((now - session.started_at).total_seconds() / 60.0, 0.1)
         vpm = round(total_vehicles / duration_min, 1)
+        vph = round(vpm * 60.0, 0)
 
-    # Đọc speed_limit đã lưu trong session.config_json
-    speed_limit = 50.0
-    if session.config_json:
-        try:
-            cfg = json.loads(session.config_json)
-            if "speed_limit" in cfg:
-                speed_limit = float(cfg["speed_limit"])
-        except Exception:
-            pass
-
-    # Đánh giá tình trạng ùn tắc từ runner (khi đang chạy phân tích)
-    congestion_level = "FLUID"
-    congestion_text = "Thông thoáng"
     active_vehicles = 0
-
-    runner = video_manager.get_runner(session_id)
-    if runner and runner.is_running:
-        cong = runner.get_congestion_info()
-        congestion_level = cong.get("congestion_level", "FLUID")
-        congestion_text = cong.get("congestion_text", "Thông thoáng")
-        active_vehicles = cong.get("active_vehicles", 0)
-        speed_limit = runner.pipeline.speed_limit
-    else:
-        congestion_level = "FLUID"
-        congestion_text = "Tạm dừng giám sát"
 
     return KPISummaryResponse(
         total_vehicles=total_vehicles,
         avg_speed=round(float(avg_speed), 1),
         vehicles_per_minute=vpm,
-        congestion_level=congestion_level,
-        congestion_text=congestion_text,
+        vehicles_per_hour=vph,
         active_vehicles=active_vehicles,
-        speed_limit=speed_limit,
         by_type=by_type
     )
 
@@ -103,10 +79,19 @@ def get_traffic_stats_history(
     limit: int = Query(60, ge=1, le=500),
     db: Session = Depends(get_db)
 ):
-    """Lấy lịch sử thống kê theo phút (phục vụ vẽ biểu đồ Line/Bar chart)"""
-    return db.query(TrafficStatModel).filter(
+    """Lấy lịch sử thống kê theo phút (phục vụ vẽ biểu đồ Line/Bar chart kèm quy đổi xe/giờ)"""
+    records = db.query(TrafficStatModel).filter(
         TrafficStatModel.session_id == session_id
     ).order_by(TrafficStatModel.timestamp.asc()).limit(limit).all()
+
+    # Tính toán lưu lượng quy đổi (xe/giờ) cho từng bản ghi chu kỳ
+    results = []
+    for r in records:
+        flow_per_hour = int(r.total_count * (60.0 / max(r.period_min, 1)))
+        stat_item = TrafficStatResponse.model_validate(r)
+        stat_item.flow_rate_per_hour = flow_per_hour
+        results.append(stat_item)
+    return results
 
 
 @router.get("/crossings", response_model=List[CrossingEventResponse])
@@ -181,66 +166,6 @@ def export_crossings_csv(session_id: int, db: Session = Depends(get_db)):
     bom_csv_bytes = b"\xef\xbb\xbf" + csv_data.encode("utf-8")
 
     filename = f"bao_cao_luu_luong_session_{session_id}.csv"
-    return StreamingResponse(
-        io.BytesIO(bom_csv_bytes),
-        media_type="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
-    )
-
-
-@router.get("/export/violations-csv")
-def export_violations_csv(session_id: int, db: Session = Depends(get_db)):
-    """Xuất biên bản vi phạm tốc độ dưới dạng file CSV chuẩn UTF-8 BOM cho Excel"""
-    violations = db.query(ViolationModel).filter(
-        ViolationModel.session_id == session_id
-    ).order_by(ViolationModel.violated_at.asc()).all()
-
-    output = io.StringIO()
-    writer = csv.writer(output)
-
-    writer.writerow([
-        "STT",
-        "Mã Phiên",
-        "ID Phương Tiện (Track ID)",
-        "Loại Phương Tiện",
-        "Vận Tốc Đo Được (km/h)",
-        "Tốc Độ Giới Hạn (km/h)",
-        "Vượt Quá (km/h)",
-        "Thời Điểm Vi Phạm",
-        "Link Bằng Chứng (Cloud / File)",
-        "Trạng Thái Xử Lý"
-    ])
-
-    vehicle_names = {
-        "car": "Ô tô con",
-        "motorcycle": "Xe máy",
-        "bus": "Xe buýt / Khách",
-        "truck": "Xe tải"
-    }
-
-    for idx, v in enumerate(violations, 1):
-        vtype_vn = vehicle_names.get(v.vehicle_type, v.vehicle_type or "Không xác định")
-        over_speed = max(0.0, v.speed_kmh - v.speed_limit)
-        time_str = v.violated_at.strftime("%Y-%m-%d %H:%M:%S") if v.violated_at else ""
-        link = v.cloud_url or f"/api/violations/image/{v.evidence_image_path}"
-        
-        writer.writerow([
-            idx,
-            v.session_id,
-            v.track_id,
-            vtype_vn,
-            f"{v.speed_kmh:.1f}",
-            f"{v.speed_limit:.1f}",
-            f"+{over_speed:.1f}",
-            time_str,
-            link,
-            "Chờ xử phạt" if v.status == "pending" else "Đã xử lý"
-        ])
-
-    csv_data = output.getvalue()
-    bom_csv_bytes = b"\xef\xbb\xbf" + csv_data.encode("utf-8")
-
-    filename = f"bien_ban_vi_pham_session_{session_id}.csv"
     return StreamingResponse(
         io.BytesIO(bom_csv_bytes),
         media_type="text/csv",

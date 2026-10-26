@@ -5,7 +5,6 @@ import LiveMonitorPage from './pages/LiveMonitorPage';
 import ROIConfigPage from './pages/ROIConfigPage';
 import DashboardPage from './pages/DashboardPage';
 import SessionsPage from './pages/SessionsPage';
-import ViolationsPage from './pages/ViolationsPage';
 import { api } from './services/api';
 import { Layers } from 'lucide-react';
 
@@ -156,10 +155,6 @@ export default function App() {
               currentSession ? (
                 <DashboardPage session={currentSession} />
               ) : renderNoSessionNotice()
-            )}
-
-            {activeTab === 'violations' && (
-              <ViolationsPage session={currentSession} />
             )}
 
             {activeTab === 'sessions' && (

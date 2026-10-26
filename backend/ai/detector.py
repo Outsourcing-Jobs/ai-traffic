@@ -52,6 +52,9 @@ class VehicleDetector:
         # Chuyển kết quả sang định dạng supervision
         detections = sv.Detections.from_ultralytics(results)
 
+        # Kiểm tra mô hình hiện tại là Fine-tuned xe VN (4 class) hay COCO gốc (80 class)
+        is_coco = len(self.model.names) > 10
+
         # Lọc chỉ giữ các class mục tiêu giao thông
         if len(detections) > 0 and detections.class_id is not None:
             mask = np.isin(detections.class_id, list(self.target_classes))
@@ -68,27 +71,34 @@ class VehicleDetector:
                     h = abs(box[3] - box[1])
                     area = w * h
 
-                    # 1. Gộp class 1 (bicycle) về 3 (motorcycle)
-                    if cid == 1:
-                        new_class_ids[idx] = 3
-                        continue
-
-                    # 2. Xử lý nhầm lẫn Bus (5) / Truck (7) thành Car (2) và ngược lại khi trời tối
-                    # Nếu model đoán là Bus (5) hoặc Truck (7) nhưng kích thước quá nhỏ -> Ô tô con (2)
-                    if cid in (5, 7):
-                        if area < 12000 or (w < 90 and h < 90):
-                            new_class_ids[idx] = 2  # Chỉnh lại thành ô tô con (car)
-
-                    # Nếu model đoán là Car (2) nhưng kích thước cực lớn (chiều dài hoặc chiều cao vượt trội) -> Bus (5)
-                    elif cid == 2:
-                        if area > 48000 and (w > 200 or h > 180):
-                            new_class_ids[idx] = 5  # Chỉnh lại thành xe buýt/xe khách (bus)
+                    if is_coco:
+                        # Với COCO gốc: 1 (bicycle), 2 (car), 3 (motorcycle), 5 (bus), 7 (truck)
+                        if cid == 1:
+                            new_class_ids[idx] = 3
+                            continue
+                        if cid in (5, 7):
+                            if area < 12000 or (w < 90 and h < 90):
+                                new_class_ids[idx] = 2  # Chỉnh thành car
+                        elif cid == 2:
+                            if area > 48000 and (w > 200 or h > 180):
+                                new_class_ids[idx] = 5  # Chỉnh thành bus
+                    else:
+                        # Với Fine-tuned: 0 (car), 1 (motorcycle), 2 (bus), 3 (truck)
+                        if cid in (2, 3):
+                            if area < 12000 or (w < 90 and h < 90):
+                                new_class_ids[idx] = 0  # Chỉnh thành car
+                        elif cid == 0:
+                            if area > 48000 and (w > 200 or h > 180):
+                                new_class_ids[idx] = 2  # Chỉnh thành bus
 
                 detections.class_id = new_class_ids
 
         return detections
 
     def get_class_name(self, class_id: int) -> str:
-        """Lấy tên tiếng Anh của loại xe dựa theo class_id"""
-        return CLASS_NAMES_MAP.get(int(class_id), "vehicle")
+        """Lấy tên tiếng Anh của loại xe dựa theo model names hoặc CLASS_NAMES_MAP"""
+        cid = int(class_id)
+        if hasattr(self.model, "names") and cid in self.model.names:
+            return self.model.names[cid]
+        return CLASS_NAMES_MAP.get(cid, "vehicle")
 
