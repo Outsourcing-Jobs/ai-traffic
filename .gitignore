@@ -31,57 +31,40 @@ yarn-error.log*
 backend/.env
 
 # ==========================================
-# 4. Trọng số Mô hình AI (Nặng hàng chục MB)
+# 4. Toàn bộ Thư mục Dữ liệu (Data, Models, Videos, Dataset, Runs)
 # ==========================================
+data/
+backend/data/
+**/data/
+backend/runs/
+runs/
+
+# Trọng số mô hình AI
 *.pt
 *.pth
 *.onnx
 *.engine
 backend/*.pt
-data/models/*.pt
-data/models/*.onnx
-backend/data/models/*.pt
-backend/data/models/*.onnx
-!**/models/.gitkeep
 
-# ==========================================
-# 5. File Video Nặng (Dùng link Cloud CDN)
-# ==========================================
+# Video và phương tiện media
 *.mp4
 *.avi
 *.mkv
 *.mov
 *.flv
 backend/*.mp4
-data/videos/*.mp4
-data/videos/*.avi
-backend/data/videos/*.mp4
-backend/data/videos/*.avi
-!**/videos/.gitkeep
 
-# ==========================================
-# 6. Cơ sở dữ liệu SQLite
-# ==========================================
+# Cơ sở dữ liệu SQLite
 *.db
 *.sqlite
 *.sqlite3
 backend/traffic.db
 backend/traffic.db-journal
 
-# ==========================================
-# 7. Dataset & Ảnh Vi Phạm (Đã lưu trữ Cloudinary)
-# ==========================================
-# Ảnh dataset
-**/dataset/images/*
-!**/dataset/images/.gitkeep
+# Tập dữ liệu và nhãn
+**/dataset/
+**/violations/
 
-# Nhãn dataset tọa độ (.txt)
-**/dataset/labels/*.txt
-!**/dataset/labels/.gitkeep
-
-# Ảnh bằng chứng vi phạm
-**/violations/*
-!**/violations/.gitkeep
 
 # ==========================================
 # 8. Hệ điều hành & Trình soạn thảo (IDE)
